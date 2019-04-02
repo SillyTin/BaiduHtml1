@@ -25,8 +25,39 @@ def findpath_cg(start, cg, end, path, pre = None):
 		findpath_cg(item, cg, end, path, start)
 
 
-def findpath_cfg():
-	pass
+def findpath_cfg(start, end, cfg, cfg_path, pre = None):
+
+	# cg_path etc. ['0x100a0' , '0x19b3c' , '0x36c34' , '0xd69c']
+	# cfg: intro procedure, is a dirc
+
+	# start = cg_path[0]
+	# end = cg_path[1]
+
+	#traverse the basic blocks in the start_func to find a path to the end_func
+	if start not in cfg_path.keys():
+		path[start] = []
+	
+	if pre:
+		for repath in cfg_path[pre]:
+			flag = True
+			for edge in cfg_path[start]:
+				if repath == edge[:-1]:
+					flag = False
+			if flag:
+				cfg_path[start].append(repath.copy())
+			for edge in cfg_path[start]:
+				if edge[-1] != start:
+					edge.append(start)
+	else:
+		cfg_path[start].append([start])
+
+	list = cfg[start]
+	for item in list:
+		findpath_cfg(item, end, cfg, cfg_path, start)
+
+	# for bb in start_func:
+		# find the way
+
 
 
 if __name__ == '__main__':
@@ -126,5 +157,10 @@ if __name__ == '__main__':
 
 	#Find path in bb level
 	f = open("%scfg_path.txt" % (path) , "w")
-	pass
+	cfg_path = {}
+	for item in edge[end]:
+		start = item[0]
+		end = item[1]
+		item = item[1:]
+		
 	f.close()
