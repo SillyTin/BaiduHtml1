@@ -1,12 +1,39 @@
 from binaryninja import *
 import os
 
+def findpath_cg(start, cg, end, path, pre = None):
+
+	if start not in path.keys():
+		path[start] = []
+	
+	if pre:
+		for repath in path[pre]:
+			flag = True
+			for edge in path[start]:
+				if repath == edge[:-1]:
+					flag = False
+			if flag:
+				path[start].append(repath.copy())
+			for edge in path[start]:
+				if edge[-1] != start:
+					edge.append(start)
+	else:
+		path[start].append([start])
+
+	list = cg[start]
+	for item in list:
+		findpath_cg(item, cg, end, path, start)
+
+
+def findpath_cfg():
+	pass
+
+
 if __name__ == '__main__':
 
 	# Load binary file
 	path = "/home/wdd/Netgear/httpd"
 	bv = BinaryViewType['ELF'].get_view_of_file(path)
-	# bv.update_analysis_and_wait()
 	print("Analysis %s done" % (path))
 
 	# Create dir
@@ -51,6 +78,9 @@ if __name__ == '__main__':
 				if str(inst[0][-1]).startswith("0x"):
 					if str(inst[0][-1]) not in cg[caller]:
 						cg[caller].append(str(inst[0][-1]))
+			# if str(inst[0][0] == 'b'):
+			# 	des = str(inst[0][-1])
+
 	for caller in cg.keys():
 		if cg[caller] != []:
 			for callee in cg[caller]:
@@ -70,9 +100,31 @@ if __name__ == '__main__':
 				if callee not in cfg[func.symbol.name][caller]:
 					cfg[func.symbol.name][caller].append(callee)
 	for func in cfg.keys():
-		f.write("%s:\n" % (func))
-		for caller in cfg[func]:
-			if cfg[func][caller] != []:
-				for callee in cfg[func][caller]:
-					f.write("%s -> %s\n" % (caller , callee))
+		flag = False
+		for item in cfg[func]:
+			if cfg[func][item] != []:
+				flag = True
+		if flag:
+			f.write("%s:\n" % (func))
+			for caller in cfg[func]:
+				if cfg[func][caller] != []:
+					for callee in cfg[func][caller]:
+						f.write("%s -> %s\n" % (caller , callee))
+	f.close()
+
+	# Find path in func level
+	f = open("%scg_path.txt" % (path) , "w")
+	edge = {}
+	start = '0x100a0'
+	end = '0xd69c'
+	findpath_cg(start, cg, end, edge)
+	for i in edge[end]:
+		for j in i[:-1]:
+			f.write("%s -> " % (j))
+		f.write("%s\n" % (i[-1]))
+	f.close()
+
+	#Find path in bb level
+	f = open("%scfg_path.txt" % (path) , "w")
+	pass
 	f.close()
