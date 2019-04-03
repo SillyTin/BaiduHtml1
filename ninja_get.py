@@ -1,7 +1,7 @@
 from binaryninja import *
 import os
 
-def findpath_cg(start, cg, end, path, pre = None):
+def findpath_cg(start, cg, path, pre = None):
 
 	if start not in path.keys():
 		path[start] = []
@@ -22,20 +22,20 @@ def findpath_cg(start, cg, end, path, pre = None):
 
 	list = cg[start]
 	for item in list:
-		findpath_cg(item, cg, end, path, start)
+		findpath_cg(item, cg, path, start)
 
 
-def findpath_cfg(start, end, cfg, cfg_path, pre = None):
+def findpath_cfg(start, end, cfg_sin, cfg_path, pre = None):
 
-	# cg_path etc. ['0x100a0' , '0x19b3c' , '0x36c34' , '0xd69c']
-	# cfg: intro procedure, is a dirc
-
-	# start = cg_path[0]
-	# end = cg_path[1]
+	# cfg_sin: intro procedure, is a dirc
+	# cfg_path:{node:[[path1],[path2]]}
 
 	#traverse the basic blocks in the start_func to find a path to the end_func
+
+	print("findpath_cfg_35\n")
+
 	if start not in cfg_path.keys():
-		path[start] = []
+		cfg_path[start] = []
 	
 	if pre:
 		for repath in cfg_path[pre]:
@@ -51,9 +51,11 @@ def findpath_cfg(start, end, cfg, cfg_path, pre = None):
 	else:
 		cfg_path[start].append([start])
 
-	list = cfg[start]
+	list = cfg_sin[start]
 	for item in list:
-		findpath_cfg(item, end, cfg, cfg_path, start)
+		findpath_cfg(item, end, cfg_sin, cfg_path, start)
+
+	print(cfg_path)
 
 	# for bb in start_func:
 		# find the way
@@ -122,14 +124,15 @@ if __name__ == '__main__':
 	f = open("%scfg.txt" % (path) , "w")
 	cfg = {}
 	for func in bv.functions:
-		cfg[func.symbol.name] = {}
+		func_name = str(hex(int(func.start)))
+		cfg[func_name] = {}
 		for bb in func.basic_blocks:
 			caller = str(hex(int(bb.start)))
-			cfg[func.symbol.name][caller] = []
+			cfg[func_name][caller] = []
 			for edge in bb.outgoing_edges:
 				callee = str(hex(int(edge.target.start)))
-				if callee not in cfg[func.symbol.name][caller]:
-					cfg[func.symbol.name][caller].append(callee)
+				if callee not in cfg[func_name][caller]:
+					cfg[func_name][caller].append(callee)
 	for func in cfg.keys():
 		flag = False
 		for item in cfg[func]:
@@ -148,7 +151,7 @@ if __name__ == '__main__':
 	edge = {}
 	start = '0x100a0'
 	end = '0xd69c'
-	findpath_cg(start, cg, end, edge)
+	findpath_cg(start, cg, edge)
 	for i in edge[end]:
 		for j in i[:-1]:
 			f.write("%s -> " % (j))
@@ -162,5 +165,7 @@ if __name__ == '__main__':
 		start = item[0]
 		end = item[1]
 		item = item[1:]
+		print("findpath_cfg_164\n")
+		findpath_cfg(start, end, cfg[start], cfg_path)
 		
 	f.close()
