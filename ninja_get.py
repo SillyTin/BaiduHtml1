@@ -25,37 +25,37 @@ def findpath_cg(start, cg, path, pre = None):
 		findpath_cg(item, cg, path, start)
 
 
-def findpath_cfg(start, end, cfg_sin, cfg_path, pre = None):
+def findpath_cfg(start, end, cfg_sin, cfg_path_sin, pre = None):
 
 	# cfg_sin: intro procedure, is a dirc
-	# cfg_path:{node:[[path1],[path2]]}
+	# cfg_path_sin:{node:[[path1],[path2]]}, intro procedure
 
 	#traverse the basic blocks in the start_func to find a path to the end_func
 
-	print("findpath_cfg_35\n")
 
-	if start not in cfg_path.keys():
-		cfg_path[start] = []
+	if start not in cfg_path_sin.keys():
+		cfg_path_sin[start] = []
 	
 	if pre:
-		for repath in cfg_path[pre]:
+		for repath in cfg_path_sin[pre]:
 			flag = True
-			for edge in cfg_path[start]:
+			for edge in cfg_path_sin[start]:
 				if repath == edge[:-1]:
 					flag = False
 			if flag:
-				cfg_path[start].append(repath.copy())
-			for edge in cfg_path[start]:
+				cfg_path_sin[start].append(repath.copy())
+			for edge in cfg_path_sin[start]:
 				if edge[-1] != start:
 					edge.append(start)
 	else:
-		cfg_path[start].append([start])
+		cfg_path_sin[start].append([start])
 
 	list = cfg_sin[start]
 	for item in list:
-		findpath_cfg(item, end, cfg_sin, cfg_path, start)
+		findpath_cfg(item, end, cfg_sin, cfg_path_sin, start)
+		print("findpath_cfg_2\n")
 
-	print(cfg_path)
+	print(cfg_path_sin)
 
 	# for bb in start_func:
 		# find the way
@@ -161,11 +161,13 @@ if __name__ == '__main__':
 	#Find path in bb level
 	f = open("%scfg_path.txt" % (path) , "w")
 	cfg_path = {}
-	for item in edge[end]:
+	func_path = edge[end]
+	for item in func_path:
 		start = item[0]
+		cfg_path[start] = {}
 		end = item[1]
 		item = item[1:]
-		print("findpath_cfg_164\n")
-		findpath_cfg(start, end, cfg[start], cfg_path)
+		findpath_cfg(start, end, cfg[start], cfg_path[start])
+		print("findpath_cfg_1\n")
 		
 	f.close()
