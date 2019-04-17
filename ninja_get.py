@@ -7,8 +7,6 @@ def findpath_cg(start, end, cg, cg_path):
 	find_related_node(end, related_node, cg)
 	path = []
 	dfs(start, end, path, cg_path, cg, related_node)
-	if start == '0x10338':
-		print('11')
 
 
 def findpath_cfg(start, end, cfg_sin, cfg_path_sin):
@@ -25,10 +23,10 @@ def findpath_cfg(start, end, cfg_sin, cfg_path_sin):
 			start = hex(int(dominators[i+1].start))
 			end = hex(int(dominators[i].start))
 			name = "%s->%s" % (start,end)
-			print(name)
 			cfg_path_sin[name] = []
+			# print(name)
 			findpath_cg(start, end, cfg_sin, cfg_path_sin[name])
-			print(cfg_path_sin[name])
+			# print(cfg_path_sin[name])
 			i += 1
 
 
@@ -60,8 +58,8 @@ def dfs(start, end, path, all_path, graph, related_node):
 	# all_path is a list including all paths from start to end
 	# related_node is a list including all nodes related to end
 
-	if start == '0x10338':
-		print('64')
+	if len(all_path) > 10000:
+		return
 
 	if start == end:
 		path.append(end)
@@ -111,7 +109,7 @@ if __name__ == '__main__':
 	# Get functions
 	funcs = {}
 	for func in bv.functions:
-		addr = str(hex(int(func.start)))
+		addr = hex(int(func.start))
 		funcs[addr] = func.symbol.name
 
 	f = open("%sfunc.txt" % (path) , "w")
@@ -126,7 +124,7 @@ if __name__ == '__main__':
 		ins = ''
 		for j in i[0]:
 			ins = ins + str(j)
-		inst.append("%s : %s" % (str(hex(int(i[1]))), ins))
+		inst.append("%s : %s" % (hex(int(i[1])), ins))
 
 	f = open("%sinst.txt" % (path) , "w")
 	for i in inst:
@@ -137,15 +135,17 @@ if __name__ == '__main__':
 	# Create CG
 	cg = {}
 	for func in bv.functions:
-		caller = str(hex(int(func.start)))
+		caller = hex(int(func.start))
 		cg[caller] = []
 		for inst in func.instructions:
 			if func.is_call_instruction(inst[1]):
 				if str(inst[0][-1]).startswith("0x"):
 					if str(inst[0][-1]) not in cg[caller]:
 						cg[caller].append(str(inst[0][-1]))
-			# if str(inst[0][0] == 'b'):
-			# 	des = str(inst[0][-1])
+			if str(inst[0][0] == 'b'):
+				des = str(inst[0][-1])
+				if des in funcs.keys() and des not in cg[caller]:
+					cg[caller].append(des)
 
 	f = open("%scg.txt" % (path) , "w")
 	for caller in cg.keys():
@@ -158,13 +158,13 @@ if __name__ == '__main__':
 	# Create CFG
 	cfg = {}
 	for func in bv.functions:
-		func_name = str(hex(int(func.start)))
+		func_name = hex(int(func.start))
 		cfg[func_name] = {}
 		for bb in func.basic_blocks:
-			caller = str(hex(int(bb.start)))
+			caller = hex(int(bb.start))
 			cfg[func_name][caller] = []
 			for edge in bb.outgoing_edges:
-				callee = str(hex(int(edge.target.start)))
+				callee = hex(int(edge.target.start))
 				if callee not in cfg[func_name][caller]:
 					cfg[func_name][caller].append(callee)
 
@@ -199,10 +199,29 @@ if __name__ == '__main__':
 
 	# Find path intro func in bb level
 	cfg_path = {}
+
+	path = path +'cfg_path/'
+	isExists=os.path.exists(path)
+	if not isExists:
+		os.makedirs(path) 
+		print(path+' Create dir success')
+	else:
+		print(path+' already exists')
+
 	for i in cg_path:
 		for j in range(len(i)-1):
 			start = i[j]
 			end = i[j+1]
-			cfg_path[start] = {}
-			findpath_cfg(start, end, cfg[start], cfg_path[start])
-	print(cfg_path)
+			name = "%s->%s" % (start, end)
+			if name not in cfg_path.keys():
+				print(name)
+				cfg_path[name] = {}
+				findpath_cfg(start, end, cfg[start], cfg_path[name])
+				f = open("%s%s.txt" % (path, name) , "w")
+				for i in cfg_path[name].keys():
+					f.write("%s\n" % (i))
+					for j in cfg_path[name][i]:
+						for k in j[:-1]:
+							f.write("%s -> " % (k))
+						f.write("%s\n" % (j[-1]))
+	print("get cfg_path")
