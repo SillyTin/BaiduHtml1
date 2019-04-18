@@ -18,15 +18,12 @@ def findpath_cfg(start, end, cfg_sin, cfg_path_sin):
 	for bb in dst_bb:
 		dominators = []
 		get_dominators(bb, dominators)
-		print('dominators')
 		for i in range(len(dominators)-1):
 			start = hex(int(dominators[i+1].start))
 			end = hex(int(dominators[i].start))
 			name = "%s->%s" % (start,end)
 			cfg_path_sin[name] = []
-			# print(name)
 			findpath_cg(start, end, cfg_sin, cfg_path_sin[name])
-			# print(cfg_path_sin[name])
 			i += 1
 
 
@@ -49,6 +46,9 @@ def get_dominators(bb, dominators):
 		bb = bb.immediate_dominator
 		dominators.append(bb)
 		get_dominators(bb, dominators)
+
+	print('get dominators')
+
 
 
 def dfs(start, end, path, all_path, graph, related_node):
@@ -86,6 +86,8 @@ def find_dst_bb(src, dst):
 		if str(inst[0][-1]) == dst:
 			dst_addr = int(str(inst[1]))
 			dst_bb.append(function.get_basic_block_at(dst_addr))
+
+	print("find dst bb")
 
 	return dst_bb
 
@@ -214,14 +216,15 @@ if __name__ == '__main__':
 			end = i[j+1]
 			name = "%s->%s" % (start, end)
 			if name not in cfg_path.keys():
-				print(name)
 				cfg_path[name] = {}
 				findpath_cfg(start, end, cfg[start], cfg_path[name])
 				f = open("%s%s.txt" % (path, name) , "w")
-				for i in cfg_path[name].keys():
-					f.write("%s\n" % (i))
-					for j in cfg_path[name][i]:
-						for k in j[:-1]:
-							f.write("%s -> " % (k))
-						f.write("%s\n" % (j[-1]))
+				for a in cfg_path[name].keys():
+					f.write("%s\n" % (a))
+					for b in cfg_path[name][a]:
+						f.write("-------------------------\n")
+						for c in b[:-1]:
+							f.write("%s -> " % (c))
+						f.write("%s\n" % (b[-1]))
+					f.write("----------------------------------------------------\n")
 	print("get cfg_path")
