@@ -1,5 +1,15 @@
 from binaryninja import *
 import os
+from graphviz import Digraph
+
+def draw(node, edge):
+	g = Digraph('graph')
+	for i in node:
+		g.node(i,shape = 'box')
+	for (i,j) in edge:
+		g.edge(i, j)
+	g.view()
+
 
 def findpath_cg(start, end, cg, cg_path):
 
@@ -16,11 +26,14 @@ def findpath_cfg(start, end, cfg_sin, cfg_path_sin):
 	dst_bb = find_dst_bb(start, end)
 
 	for bb in dst_bb:
-		dominators = []
+		dominators = [bb]
 		get_dominators(bb, dominators)
+		start = hex(int(bb.start))
+		name = "%s->%s" % (start,end)
+		cfg_path_sin[name] = [[start,end]]
 		for i in range(len(dominators)-1):
-			start = hex(int(dominators[i+1].start))
-			end = hex(int(dominators[i].start))
+			start = hex(int(dominators[i].start))
+			end = hex(int(dominators[i+1].start))
 			name = "%s->%s" % (start,end)
 			cfg_path_sin[name] = []
 			findpath_cg(start, end, cfg_sin, cfg_path_sin[name])
@@ -44,10 +57,10 @@ def get_dominators(bb, dominators):
 
 	if bb.immediate_dominator:
 		bb = bb.immediate_dominator
-		dominators.append(bb)
+		dominators.insert(0,bb)
 		get_dominators(bb, dominators)
 
-	print('get dominators')
+	print(dominators)
 
 
 
@@ -58,7 +71,7 @@ def dfs(start, end, path, all_path, graph, related_node):
 	# all_path is a list including all paths from start to end
 	# related_node is a list including all nodes related to end
 
-	if len(all_path) > 10000:
+	if len(all_path) > 10:
 		return
 
 	if start == end:
@@ -87,7 +100,7 @@ def find_dst_bb(src, dst):
 			dst_addr = int(str(inst[1]))
 			dst_bb.append(function.get_basic_block_at(dst_addr))
 
-	print("find dst bb")
+	print(dst_bb)
 
 	return dst_bb
 
@@ -95,7 +108,7 @@ def find_dst_bb(src, dst):
 if __name__ == '__main__':
 
 	# Load binary file
-	path = "/home/wdd/Netgear/httpd"
+	path = "./httpd"
 	bv = BinaryViewType['ELF'].get_view_of_file(path)
 	print("Analysis %s done" % (path))
 
@@ -108,7 +121,7 @@ if __name__ == '__main__':
 	else:
 		print(path+' already exists')
 
-	# Get functions
+	# # Get functions
 	funcs = {}
 	for func in bv.functions:
 		addr = hex(int(func.start))
@@ -121,18 +134,18 @@ if __name__ == '__main__':
 	print("get func")
 
 	# Get instructions
-	inst = []
+	insts = []
 	for i in bv.instructions:
 		ins = ''
 		for j in i[0]:
 			ins = ins + str(j)
-		inst.append("%s : %s" % (hex(int(i[1])), ins))
+		insts.append("%s : %s" % (hex(int(i[1])), ins))
 
 	f = open("%sinst.txt" % (path) , "w")
-	for i in inst:
+	for i in insts:
 		f.write("%s\n" % (i))
 	f.close()
-	print("get inst")
+	print("get insts")
 
 	# Create CG
 	cg = {}
@@ -218,7 +231,7 @@ if __name__ == '__main__':
 			if name not in cfg_path.keys():
 				cfg_path[name] = {}
 				findpath_cfg(start, end, cfg[start], cfg_path[name])
-				f = open("%s%s.txt" % (path, name) , "w")
+				f = open("%s%s-%s.txt" % (path, start, end) , "w")
 				for a in cfg_path[name].keys():
 					f.write("%s\n" % (a))
 					for b in cfg_path[name][a]:
@@ -228,3 +241,25 @@ if __name__ == '__main__':
 						f.write("%s\n" % (b[-1]))
 					f.write("----------------------------------------------------\n")
 	print("get cfg_path")
+
+	node = []
+	edge = []
+
+	for i in cg_path[0]:
+		node.append(i)
+
+	path = cg_path[0]
+	for i in range(len(path)-1):
+		start = path[i]
+		end = path[i+1]
+		name = "%s->%s" % (start, end)
+		for j in cfg_path[name].keys():
+			for k in cfg_path[name][j]:
+				for m in k:
+					if m not in node:
+						node.append(m)
+				for l in range(len(k)-1):	
+					if (k[l],k[l+1]) not in edge:
+						edge.append((k[l],k[l+1]))
+
+	draw(node, edge) 
