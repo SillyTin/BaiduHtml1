@@ -10,11 +10,13 @@ for i in cfg.functions.values():
 
 class state(object):
 	"""docstring for state"""
+	id = 0
 	tag = ''
 	irsb = ''
 
-	def __init__(self, tag, irsb, stmt):
+	def __init__(self, id, tag, irsb, stmt):
 		self.tag = tag
+		self.id = id
 		self.irsb = irsb
 		self.stmt = stmt
 		self.defvar = []
@@ -38,24 +40,26 @@ class IRblock(object):
 	def addstate(self, state):
 		self.states.append(state)
 
-var_def = []
+def getid(state):
+	return state.id
+
 var_use = []
 strand = []
 uncover = []
 IRblocks = []
 
-bb = list(func.blocks)[0] 
+bb = list(func.blocks)[0]
 irsb = bb.vex
-block = IRblock(irsb.addr) 
+block = IRblock(irsb.addr)
 IRblocks.append(block)
 
 
 index = 0
 for stmt in irsb.statements:
 	print("in the %d loop" %index)
-	index +=1
 	st = None
-	st = state(stmt.tag,irsb,stmt)
+	st = state(index,stmt.tag,irsb,stmt)
+	index +=1
 	if isinstance(st.stmt, pyvex.IRStmt.IMark):
 		continue
 	elif isinstance(st.stmt, pyvex.IRStmt.WrTmp):
@@ -79,20 +83,40 @@ for stmt in irsb.statements:
 
 	print(st.defvar)
 	print(st.usevar)
-	# del st 
 
 print(block.states)
 
 
 # while len(uncover) > 0:
-# 	inst = uncover.pop()
-# 	srand = []
-# 	var_def = inst.defvar.copy()
-# 	var_use = inst.usevar.copy()
+inst = uncover.pop()
+srand = []
+if inst.usevar != []:
+	srand.append(inst)
+	var_use = inst.usevar.copy()
 
-# for stmt in irsb.statements:
-# 	if isinstance(stmt, pyvex.IRStmt.Get):
-# 		var_def.append(stmt.tmp)
-# 		var_use.append(stmt.data)
+while len(var_use)>0:
+	for usev in var_use:
+		for st in uncover:
+			if usev in st.defvar:
+				for v in st.usevar:
+					var_use.append(v)
+			if usev in st.usevar:
+				for v in st.usevar:
+					if v not in var_use:
+						var_use.append(v)
+		for st in uncover:
+			if usev in st.defvar:
+				srand.append(st)
+				uncover.remove(st)
+				var_use.remove(usev)
+			if usev in st.usevar:
+				srand.append(st)
+				uncover.remove(st)
+		if usev in var_use:
+			var_use.remove(usev)
+
+srand.sort(key=getid)
+for r in srand:
+	r.stmt.pp()
 
 bb.vex.pp()
