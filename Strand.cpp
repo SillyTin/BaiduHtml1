@@ -1,32 +1,50 @@
 #include "Strand.h"
 using namespace llvm;
 
-typedef std::vector<llvm::Instruction *> strand
+void AddInst(strand* st, Instruction* Ins, strand* unuse){
+  // errs() << "AddInst\n";
+  // errs() << "Instruction:" << *Ins << "\n";
 
-void AddInst(strand st, Instruction Ins, strand unuse){
-  for (Use &U : Ins.operands()) {
+  for(std::vector<Instruction*>::iterator it=st->begin(); it!=st->end();it++){
+    if(* it == Ins){
+      return;
+    }
+  }
+  st->push_back(Ins);
+
+  for (Use &U : Ins->operands()) {
     Value *v = U.get();
-    errs() << "Value:" << *v << "\n";
+    // errs() << "Value:" << *v << "\n";
 
     if(isa<User>(v)){
-      errs() << "Def:" << *(dyn_cast<User>(v)) << "\n";
+      // errs() << "Def:" << *(dyn_cast<User>(v)) << "\n";
       User* u = dyn_cast<User>(v);
 
       if(isa<Instruction>(u)){
-        errs() << "Def In:" << *(dyn_cast<Instruction>(u)) << "\n";
+        // errs() << "Def In:" << *(dyn_cast<Instruction>(u)) << "\n";
         Instruction* In = dyn_cast<Instruction>(u);
-        unuse.pop(In);
-        st.insert(In);
+
+        for(std::vector<Instruction*>::iterator it=unuse->begin(); it!=unuse->end();it++){
+          // errs() << "for\n";
+          if(* it == In){
+            // errs() << "if\n";
+            it = unuse->erase(it);
+            break;
+          }
+        }
         AddInst(st, In, unuse);
       }
       else{
-        errs() << "Can't cast Instruction\n";
+        // errs() << "Can't cast Instruction\n";
+        continue;
       }
     }
     else{
-      errs() << "Can't cast User\n";
+      // errs() << "Can't cast User\n";
+      continue;
     }
   }
+  return;
 }
 
 namespace {
@@ -36,41 +54,44 @@ namespace {
     virtual bool runOnFunction(Function& F) {
       errs() << F.getFunction() << "\n";
       errs() << "=============================\n";
-      // std::hash_map<llvm::Instruction *,std::set<llvm::Value *>> uses , defs;
-      // std::set<llvm::Value> use;
+
       for (BasicBlock &B : F) {
         std::vector<llvm::Instruction *> unuse;
         std::vector<strand> strands;
         for (Instruction &I: B) {
-          // Inst* i = new Inst();
-          // Value* op = dyn_cast<Value>(I.getOperandList());
-          // uses.insert(I , op);
-          errs() << "Instruction:" << I << "\n";
-          unuse.insert(&I);
+          unuse.push_back(&I);
         }
-        while(unuse!= empty){
-          Instruction* I = unuse.pop();
+        while(!unuse.empty()){
+          Instruction* I = unuse.back();
+          unuse.pop_back();
           strand st;
-          AddInst(st, I, unuse);
-          strands.insert(st);
+          // errs() << "new st\n";
+          AddInst(&st, I, &unuse);
+          strands.push_back(st);
         }
 
-//             errs() << "Operand type:" << *(v->getType()) << '\n';
-//             errs() << "Operand Name:" << v->getName() << '\n';
-//           errs().write_escaped(I.getOpcodeName()) << '\n';
-        }
-        for(strand s : strands){
+        if(!strands.empty()){
           errs() << "--------------Strands-------------\n";
-          for(Instrction* I : s){
-            errs() << *I <<"\n";
+          for(strand s : strands){
+            if(!s.empty()){
+              strand sr;
+              for (std::vector<Instruction*>::iterator rs=s.end()-1; rs!=s.begin()-1;rs--)
+              {
+                sr.push_back(*rs);
+              }
+              for(Instruction* I : sr){
+                errs() << *I <<"\n";
+              }
+              errs() << "------------------------\n";
+            }
           }
-          errs() << "------------------------\n";
         }
       }
       return false;
     }
   };
 }
+
 char Strand::ID = 0;
 static RegisterPass<Strand> X("Strand", "Strand Pass",
                              false /* Only looks at CFG */,
