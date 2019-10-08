@@ -5,6 +5,7 @@ void AddInst(strand* st, Instruction* Ins, strand* unuse){
   // errs() << "AddInst\n";
   // errs() << "Instruction:" << *Ins << "\n";
 
+
   for(std::vector<Instruction*>::iterator it=st->begin(); it!=st->end();it++){
     if(* it == Ins){
       return;
@@ -15,6 +16,7 @@ void AddInst(strand* st, Instruction* Ins, strand* unuse){
   for (Use &U : Ins->operands()) {
     Value *v = U.get();
     // errs() << "Value:" << *v << "\n";
+
 
     if(isa<User>(v)){
       // errs() << "Def:" << *(dyn_cast<User>(v)) << "\n";
@@ -47,6 +49,27 @@ void AddInst(strand* st, Instruction* Ins, strand* unuse){
   return;
 }
 
+std::string num2str(int i)
+{
+  std::stringstream ss;
+  ss<<i;
+  return ss.str();
+}
+
+void Normalize(Instruction* I, int* num){
+   for (Use &U : I->operands()){
+      Value *v = U.get();
+      // errs() << *I << "\n";
+      // errs() << v->getName() <<"\n";
+      std::string name = v->getName();
+      if(name.compare(0,1,"t")){
+        v->setName("t"+num2str(*num));
+        (*num)++;
+      }
+      // errs() << v->getName() << "\n";
+   }
+}
+
 namespace {
   struct Strand : public FunctionPass {
     static char ID;
@@ -71,6 +94,7 @@ namespace {
         }
 
         if(!strands.empty()){
+          int num = 0;
           errs() << "--------------Strands-------------\n";
           for(strand s : strands){
             if(!s.empty()){
@@ -80,6 +104,9 @@ namespace {
                 sr.push_back(*rs);
               }
               for(Instruction* I : sr){
+                Normalize(I, &num);
+              }
+              for(Instruction* I : sr){
                 errs() << *I <<"\n";
               }
               errs() << "------------------------\n";
@@ -87,6 +114,9 @@ namespace {
           }
         }
       }
+      errs() << F.getFunction() << "\n";
+      errs() << "=============================\n";
+
       return false;
     }
   };
